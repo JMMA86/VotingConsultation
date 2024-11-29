@@ -1,0 +1,11 @@
+#
+# The server creates one single object adapter with the name
+# "Hello". The following line sets the endpoints for this
+# adapter.
+#
+Chat.Endpoints=tcp -p 10000
+#
+# Only listen on the ZeroTier's LIASOn1 interface by default.
+#
+Ice.Default.Host=xhgrid9
+Ice.ThreadPool.Server.Size=15
