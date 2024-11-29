@@ -46,7 +46,6 @@ public class Client {
 
             // Main input loop
             while (true) {
-                System.out.print("Enter command: ");
                 String input = sc.nextLine();
                 
                 if (input.equals("/exit")) {
