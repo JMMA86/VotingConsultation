@@ -1,6 +1,3 @@
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,24 +91,6 @@ public class VotingServiceI implements VotingSystem.VotingService {
                 callback.reportResponse(response.toString());
             } catch (Exception e) {
                 callback.reportResponse("Error retrieving voting stations: " + e.getMessage());
-            }
-        });
-    }
-
-    @Override
-    public void uploadVoterFile(String filePath, CallbackPrx callback, Current current) {
-        executor.submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String voterId = line.trim();
-                    String votingStation = databaseAccess.getVotingStation(voterId);
-                    callback.reportResponse("Voter " + voterId + " votes at: " + votingStation);
-                }
-            } catch (IOException e) {
-                callback.reportResponse("Error reading file: " + e.getMessage());
-            } catch (Exception e) {
-                callback.reportResponse("Error processing voter IDs: " + e.getMessage());
             }
         });
     }

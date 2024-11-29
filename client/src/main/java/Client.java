@@ -42,7 +42,6 @@ public class Client {
             System.out.println("(System) Welcome! You can use the following commands:\n" +
                     "'/get station' - Find your voting station\n" +
                     "'/list stations CITY' - List voting stations in a city\n" +
-                    "'/upload FILE_PATH' - Upload a file of voter IDs for processing\n" +
                     "'/exit' - Exit the program");
 
             // Main input loop
@@ -62,13 +61,6 @@ public class Client {
                         votingServicePrx.listVotingStations(parts[2], callbackPrx);
                     } else {
                         System.out.println("(System) Error: Please specify a city name.");
-                    }
-                } else if (input.startsWith("/upload")) {
-                    String[] parts = input.split(" ", 2);
-                    if (parts.length == 2) {
-                        votingServicePrx.uploadVoterFile(parts[1], callbackPrx);
-                    } else {
-                        System.out.println("(System) Error: Please specify the file path.");
                     }
                 } else {
                     System.out.println("(System) Error: Invalid command.");
