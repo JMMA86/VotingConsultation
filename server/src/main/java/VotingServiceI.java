@@ -1,6 +1,9 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +28,9 @@ public class VotingServiceI implements VotingSystem.VotingService {
     // DAO for database interactions
     private final DatabaseAccess databaseAccess = new DatabaseAccess();
 
+    // Observers list
+    private List<CallbackPrx> observers = new ArrayList<>();
+
     public VotingServiceI() {
         Thread thread = new Thread(() -> {
             while (true) {
@@ -38,6 +44,29 @@ public class VotingServiceI implements VotingSystem.VotingService {
         });
         thread.start();
     }
+
+    @Override
+    public void registerObserver(CallbackPrx observer, Current current) {
+        observers.add(observer);
+    }
+
+    @Override
+    public void unregisterObserver(CallbackPrx observer, Current current) {
+        observers.remove(observer);
+    }
+
+    public void notifyObservers(String message) {
+        List<CallbackPrx> failedObservers = new ArrayList<>();
+        for (CallbackPrx observer : observers) {
+            try {
+                observer.reportResponse(message);
+            } catch (Exception e) {
+                failedObservers.add(observer);
+                System.err.println("Failed to notify observer: " + e.getMessage());
+            }
+        }
+        observers.removeAll(failedObservers);
+    }    
 
     @Override
     public boolean registerVoter(String voterId, CallbackPrx callback, Current current) {
@@ -78,16 +107,72 @@ public class VotingServiceI implements VotingSystem.VotingService {
                 int primeFactorsCount = countPrimeFactors(Integer.parseInt(voterId));
                 boolean isPrime = isPrime(primeFactorsCount);
                 if (isPrime) {
-                    callback.reportResponse("\nVoter " + voterId + " votes at: " + votingStation + " and its number of prime factors is prime.");
+                    notifyObservers("\nVoter " + voterId + " votes at: " + votingStation + " and its number of prime factors is prime.");
                 } else {
-                    callback.reportResponse("\nVoter " + voterId + " votes at: " + votingStation + " and its number of prime factors is not prime.");
+                    notifyObservers("\nVoter " + voterId + " votes at: " + votingStation + " and its number of prime factors is not prime.");
                 }
             } catch (Exception e) {
-                callback.reportResponse("\nError retrieving voting station: " + e.getMessage());
+                notifyObservers("\nError retrieving voting station: " + e.getMessage());
             }
         });
     }
-    
+
+    @Override
+    public void listVotingStations(String city, CallbackPrx callback, Current current) {
+        executor.submit(() -> {
+            try {
+                List<String> stations = databaseAccess.getVotingStations(city);
+                StringBuilder response = new StringBuilder("\nVoting stations in " + city + ":\n");
+                for (String station : stations) {
+                    response.append(station).append("\n");
+                }
+                notifyObservers(response.toString());
+            } catch (Exception e) {
+                notifyObservers("\nError retrieving voting stations: " + e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public void uploadVoterFile(String filePath, CallbackPrx callback, Current current) {
+        executor.submit(() -> {
+            int totalQueries = 0;
+            long totalStartTime = System.currentTimeMillis();
+            notifyObservers("Proccesing...");
+            
+            try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
+                BufferedWriter writer = new BufferedWriter(new FileWriter("server_log.csv", true))) {
+                
+                String line;
+                writer.write("voterId,votingStation,isPrime,time\n");
+                while ((line = reader.readLine()) != null) {
+                    totalQueries++;
+                    long startTime = System.currentTimeMillis();
+                    String voterId = line.trim();
+                    String votingStation = databaseAccess.getVotingStation(voterId);
+                    
+                    int primeFactorCount = countPrimeFactors(Integer.parseInt(voterId));
+                    boolean isPrime = isPrime(primeFactorCount);
+                    
+                    long endTime = System.currentTimeMillis();
+                    
+                    writer.write(String.format(
+                        "%s,%s,%d,%d\n",
+                        voterId, votingStation, isPrime ? 1 : 0, endTime - startTime
+                    ));
+                }
+                
+                long totalEndTime = System.currentTimeMillis();
+                String answer = "\nTotal queries: " + totalQueries + "\nTime elapsed: " + (totalEndTime - totalStartTime) + " ms.\n";
+                notifyObservers(answer);
+            } catch (IOException e) {
+                notifyObservers("Error reading file: " + e.getMessage());
+            } catch (Exception e) {
+                notifyObservers("Error processing voter IDs: " + e.getMessage());
+            }
+        });
+    }
+
     public int countPrimeFactors(int n) {
         int count = 0;
         for (int i = 2; i <= n; i++) {
@@ -105,40 +190,6 @@ public class VotingServiceI implements VotingSystem.VotingService {
             if (n % i == 0) return false;
         }
         return true;
-    }
-
-    @Override
-    public void listVotingStations(String city, CallbackPrx callback, Current current) {
-        executor.submit(() -> {
-            try {
-                List<String> stations = databaseAccess.getVotingStations(city);
-                StringBuilder response = new StringBuilder("\nVoting stations in " + city + ":\n");
-                for (String station : stations) {
-                    response.append(station).append("\n");
-                }
-                callback.reportResponse(response.toString());
-            } catch (Exception e) {
-                callback.reportResponse("\nError retrieving voting stations: " + e.getMessage());
-            }
-        });
-    }
-
-    @Override
-    public void uploadVoterFile(String filePath, CallbackPrx callback, Current current) {
-        executor.submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String voterId = line.trim();
-                    String votingStation = databaseAccess.getVotingStation(voterId);
-                    callback.reportResponse("Voter " + voterId + " votes at: " + votingStation);
-                }
-            } catch (IOException e) {
-                callback.reportResponse("Error reading file: " + e.getMessage());
-            } catch (Exception e) {
-                callback.reportResponse("Error processing voter IDs: " + e.getMessage());
-            }
-        });
     }
 
     private void checkConnections() {
