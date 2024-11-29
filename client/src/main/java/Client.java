@@ -6,8 +6,6 @@ import com.zeroc.Ice.ObjectAdapter;
 import com.zeroc.Ice.ObjectPrx;
 import com.zeroc.Ice.Util;
 
-import VotingSystem.Callback;
-
 public class Client {
     public static Scanner sc = new Scanner(System.in);
     public static boolean isInterfaceReady = false;
@@ -18,18 +16,18 @@ public class Client {
         System.setOut(originalOut);
         try (com.zeroc.Ice.Communicator communicator = com.zeroc.Ice.Util.initialize(args, "config.client")) {
             VotingSystem.VotingServicePrx votingServicePrx = VotingSystem.VotingServicePrx
-                    .checkedCast(communicator.propertyToProxy("VotingService.Proxy"));
+                .checkedCast(communicator.propertyToProxy("VotingService.Proxy"));
 
             if (votingServicePrx == null) {
                 throw new RuntimeException("Invalid proxy configuration.");
             }
 
             ObjectAdapter adapter = communicator.createObjectAdapter("Callback");
-            VotingSystem.Callback callback = (Callback) new CallbackI();
-
+            VotingSystem.Callback callback = new CallbackI();
             ObjectPrx prx = adapter.add(callback, Util.stringToIdentity("Callback"));
             VotingSystem.CallbackPrx callbackPrx = VotingSystem.CallbackPrx.checkedCast(prx);
             adapter.activate();
+
             isInterfaceReady = true;
 
             // Register voter

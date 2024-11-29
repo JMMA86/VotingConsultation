@@ -16,7 +16,14 @@ public class DatabaseAccess {
 
     public String getVotingStation(String voterId) throws SQLException {
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD)) {
-            String query = "SELECT voting_station FROM voters WHERE voter_id = ?";
+            // Consulta para obtener el puesto de votación del ciudadano
+            String query = """
+                SELECT pv.nombre AS voting_station
+                FROM ciudadano c
+                JOIN mesa_votacion mv ON c.mesa_id = mv.id
+                JOIN puesto_votacion pv ON mv.puesto_id = pv.id
+                WHERE c.documento = ?
+            """;
             PreparedStatement stmt = conn.prepareStatement(query);
             stmt.setString(1, voterId);
             ResultSet rs = stmt.executeQuery();
@@ -30,7 +37,13 @@ public class DatabaseAccess {
 
     public List<String> getVotingStations(String city) throws SQLException {
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD)) {
-            String query = "SELECT DISTINCT voting_station FROM voters WHERE city = ?";
+            // Consulta para obtener todos los puestos de votación en un municipio
+            String query = """
+                SELECT DISTINCT pv.nombre AS voting_station
+                FROM puesto_votacion pv
+                JOIN municipio m ON pv.municipio_id = m.id
+                WHERE m.nombre = ?
+            """;
             PreparedStatement stmt = conn.prepareStatement(query);
             stmt.setString(1, city);
             ResultSet rs = stmt.executeQuery();
@@ -39,17 +52,6 @@ public class DatabaseAccess {
                 stations.add(rs.getString("voting_station"));
             }
             return stations;
-        }
-    }
-
-    public void saveAuditLog(String voterId, String action, String details) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD)) {
-            String query = "INSERT INTO audit_logs (voter_id, action, details, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
-            PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.setString(1, voterId);
-            stmt.setString(2, action);
-            stmt.setString(3, details);
-            stmt.executeUpdate();
         }
     }
 }

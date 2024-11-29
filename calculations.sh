@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NUM_INSTANCIAS=100
-BIG_NUM=10000000000
+BIG_NUM=10002000000
 OUTPUT_FILE="resultados.md"
 
 # Inicializar el archivo de salida
