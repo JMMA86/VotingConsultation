@@ -75,11 +75,36 @@ public class VotingServiceI implements VotingSystem.VotingService {
         executor.submit(() -> {
             try {
                 String votingStation = databaseAccess.getVotingStation(voterId);
-                callback.reportResponse("Voter " + voterId + " votes at: " + votingStation);
+                int primeFactorsCount = countPrimeFactors(Integer.parseInt(voterId));
+                boolean isPrime = isPrime(primeFactorsCount);
+                if (isPrime) {
+                    callback.reportResponse("\nVoter " + voterId + " votes at: " + votingStation + " and its number of prime factors is prime.");
+                } else {
+                    callback.reportResponse("\nVoter " + voterId + " votes at: " + votingStation + " and its number of prime factors is not prime.");
+                }
             } catch (Exception e) {
-                callback.reportResponse("Error retrieving voting station: " + e.getMessage());
+                callback.reportResponse("\nError retrieving voting station: " + e.getMessage());
             }
         });
+    }
+    
+    public int countPrimeFactors(int n) {
+        int count = 0;
+        for (int i = 2; i <= n; i++) {
+            while (n % i == 0) {
+                count++;
+                n /= i;
+            }
+        }
+        return count;
+    }
+    
+    public boolean isPrime(int n) {
+        if (n <= 1) return false;
+        for (int i = 2; i <= Math.sqrt(n); i++) {
+            if (n % i == 0) return false;
+        }
+        return true;
     }
 
     @Override
@@ -87,13 +112,13 @@ public class VotingServiceI implements VotingSystem.VotingService {
         executor.submit(() -> {
             try {
                 List<String> stations = databaseAccess.getVotingStations(city);
-                StringBuilder response = new StringBuilder("Voting stations in " + city + ":\n");
+                StringBuilder response = new StringBuilder("\nVoting stations in " + city + ":\n");
                 for (String station : stations) {
                     response.append(station).append("\n");
                 }
                 callback.reportResponse(response.toString());
             } catch (Exception e) {
-                callback.reportResponse("Error retrieving voting stations: " + e.getMessage());
+                callback.reportResponse("\nError retrieving voting stations: " + e.getMessage());
             }
         });
     }
