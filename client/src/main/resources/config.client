@@ -4,7 +4,7 @@
 VotingService.Proxy=VotingService:tcp -h localhost -p 10000
 
 # Configuración para el callback en localhost.
-Callback.Endpoints=tcp -h localhost -p 10002
+Callback.Endpoints=tcp -h localhost
 
 # Ice.Trace.Network=3
 # Ice.Trace.Protocol=1
