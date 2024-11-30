@@ -1,1 +1,7 @@
+*build/
+**.jar
+.*
+*bin/
+.gradle
+Demo/
 **.vpp.*
