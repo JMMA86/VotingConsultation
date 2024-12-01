@@ -12,3 +12,6 @@ VotingSystem/
 .idea
 out/
 .idea_modules/
+
+**/logs
+config/db

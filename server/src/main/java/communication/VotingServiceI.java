@@ -80,6 +80,7 @@ public class VotingServiceI implements VotingSystem.VotingService {
     }
 
     public void reportResponse(String message, CallbackPrx callback) {
+        System.out.println(message);
         clientManager.reportResponse(message, callback);
     }
 

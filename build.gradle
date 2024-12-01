@@ -23,6 +23,7 @@ subprojects {
 
     dependencies {
         implementation 'com.zeroc:ice:3.7.6'
+        implementation 'com.zeroc:icegrid:3.7.6'
         implementation 'io.github.cdimascio:dotenv-java:2.2.0'
         implementation 'org.postgresql:postgresql:42.2.24'
     }

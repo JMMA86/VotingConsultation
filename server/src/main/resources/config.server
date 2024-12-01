@@ -1,5 +1,6 @@
 #
 # Configuración de adaptador de objeto para el servidor.
+# Debido a las configuraciones de IceGrid ya no se usa.
 #
 VotingService.Endpoints=tcp -h localhost -p 10000
 
@@ -15,4 +16,3 @@ Ice.ThreadPool.Server.Size=15
 
 # Ice.Trace.Network=3
 # Ice.Trace.Protocol=1
-
