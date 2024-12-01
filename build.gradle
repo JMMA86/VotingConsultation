@@ -25,6 +25,9 @@ subprojects {
         implementation 'com.zeroc:ice:3.7.6'
         implementation 'io.github.cdimascio:dotenv-java:2.2.0'
         implementation 'org.postgresql:postgresql:42.2.24'
+        implementation 'com.zaxxer:HikariCP:5.0.1'
+        implementation 'org.slf4j:slf4j-api:1.7.32' // Add this line
+        implementation 'org.slf4j:slf4j-simple:1.7.32' // Add this line
     }
 
     shadowJar {

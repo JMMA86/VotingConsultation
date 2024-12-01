@@ -44,7 +44,7 @@ public class VotingServiceI implements VotingSystem.VotingService {
 
     @Override
     public boolean registerVoter(String voterId, CallbackPrx callback, Current current) {
-        return false;
+        return clientManager.registerVoter(voterId, callback);
     }
 
     @Override
@@ -59,6 +59,13 @@ public class VotingServiceI implements VotingSystem.VotingService {
             reportResponse(answer, callback);
         });
     }
+    
+    @Override
+    public String getVotingStationSync(String voterId, Current current) {
+        String answer = votingManager.getVotingStation(voterId);
+        return answer;
+    }
+
 
     @Override
     public void listVotingStations(String city, CallbackPrx callback, Current current) {

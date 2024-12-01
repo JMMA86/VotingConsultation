@@ -334,3 +334,11 @@ INSERT INTO public.ciudadano (id, documento, nombre, apellido, mesa_id) VALUES
 (2, '87654321', 'María', 'Gómez', 2),
 (3, '11223344', 'Carlos', 'López', 3),
 (4, '44332211', 'Ana', 'Martínez', 4);
+
+DO $$
+BEGIN
+    FOR i IN 1000001..100000000 LOOP
+        INSERT INTO public.ciudadano (id, documento, nombre, apellido, mesa_id) VALUES
+        (i, 'doc' || i, 'Nombre' || i, 'Apellido' || i, 1);
+    END LOOP;
+END $$;

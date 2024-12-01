@@ -60,6 +60,7 @@ public class VotingManager {
 
                 CountDownLatch latch = new CountDownLatch(observers.size());
                 int startIndex = 0;
+                System.out.println("observers " + observers.size());
                 for (CallbackPrx callbackPrx : observers) {
                     int endIndex = startIndex + blockSize + (remainder > 0 ? 1 : 0);
                     remainder--;
