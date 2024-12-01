@@ -43,7 +43,7 @@ public class CallbackI implements VotingSystem.Callback {
                     latch.countDown();
                 });
             }
-            latch.await(); // Wait for all tasks to complete
+            latch.await();
         } catch (Exception e) {
             e.printStackTrace();
         }

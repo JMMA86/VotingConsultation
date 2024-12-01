@@ -7,10 +7,15 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class VotingManager {
     private final PrimeManager primeManager = new PrimeManager();
@@ -45,43 +50,111 @@ public class VotingManager {
     }
 
     public void uploadVoterFile(String filePath, List<CallbackPrx> observers, ExecutorService executor) {
-        executor.submit(() -> {
-            List<String> voterIds = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
-                 BufferedWriter writer = new BufferedWriter(new FileWriter("server_log.csv", true))) {
+        // Tamaño del bloque para procesamiento
+        final int BLOCK_SIZE = 100; // Ajusta según el rendimiento esperado y memoria disponible
 
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    voterIds.add(line.trim());
+        executor.submit(() -> {
+            try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
+                BufferedWriter logWriter = new BufferedWriter(new FileWriter("server_log.csv", true))) {
+
+                List<String> block = new ArrayList<>();
+                Queue<CallbackPrx> availableObservers = new LinkedList<>(observers);
+                AtomicInteger processingBlocks = new AtomicInteger(0);
+                CountDownLatch latch = new CountDownLatch(observers.size());
+
+                logWriter.write("blockNumber,observer,timeTaken\n");
+                String voterId;
+                int blockCounter = 0;
+
+                while ((voterId = reader.readLine()) != null) {
+                    block.add(voterId.trim());
+
+                    // Si el bloque está completo, procesarlo
+                    if (block.size() == BLOCK_SIZE) {
+                        while (availableObservers.isEmpty()) {
+                            // Esperar a que un observer esté disponible
+                            Thread.sleep(50);
+                        }
+
+                        CallbackPrx observer = availableObservers.poll();
+                        String[] voterBlock = block.toArray(new String[0]);
+                        int currentBlockNumber = blockCounter++;
+
+                        long startTime = System.currentTimeMillis();
+                        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                            try {
+                                observer.processBlock(voterBlock);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }, executor);
+
+                        future.thenAccept(v -> {
+                            long endTime = System.currentTimeMillis();
+                            long timeTaken = endTime - startTime;
+
+                            synchronized (logWriter) {
+                                try {
+                                    logWriter.write(String.format("%d,%s,%d\n", currentBlockNumber,
+                                            observer.ice_getIdentity().name, timeTaken));
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            availableObservers.add(observer); // Liberar el observer
+                            processingBlocks.decrementAndGet();
+                            latch.countDown();
+                        });
+
+                        block.clear(); // Limpiar el bloque para el siguiente grupo de cédulas
+                        processingBlocks.incrementAndGet();
+                    }
                 }
 
-                int blockSize = voterIds.size() / observers.size();
-                int remainder = voterIds.size() % observers.size();
+                // Asegurarse de procesar el bloque restante si no está vacío
+                if (!block.isEmpty()) {
+                    while (availableObservers.isEmpty()) {
+                        Thread.sleep(500);
+                    }
 
-                CountDownLatch latch = new CountDownLatch(observers.size());
-                int startIndex = 0;
-                System.out.println("observers " + observers.size());
-                for (CallbackPrx callbackPrx : observers) {
-                    int endIndex = startIndex + blockSize + (remainder > 0 ? 1 : 0);
-                    remainder--;
+                    CallbackPrx observer = availableObservers.poll();
+                    String[] voterBlock = block.toArray(new String[0]);
+                    int currentBlockNumber = blockCounter++;
 
-                    List<String> block = voterIds.subList(startIndex, endIndex);
-
-                    executor.submit(() -> {
+                    long startTime = System.currentTimeMillis();
+                    CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                         try {
-                            callbackPrx.processBlock(block.toArray(new String[0]));
+                            observer.processBlock(voterBlock);
                         } catch (Exception e) {
                             e.printStackTrace();
-                        } finally {
-                            latch.countDown();
                         }
+                    }, executor);
+
+                    future.thenAccept(v -> {
+                        long endTime = System.currentTimeMillis();
+                        long timeTaken = endTime - startTime;
+
+                        synchronized (logWriter) {
+                            try {
+                                logWriter.write(String.format("%d,%s,%d\n", currentBlockNumber,
+                                        observer.ice_getIdentity().name, timeTaken));
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        availableObservers.add(observer);
+                        processingBlocks.decrementAndGet();
+                        latch.countDown();
                     });
 
-                    startIndex = endIndex;
+                    block.clear();
+                    processingBlocks.incrementAndGet();
                 }
 
-                latch.await(); // Wait for all tasks to complete
-                writer.write("Total queries," + voterIds.size() + "\n");
+                // Esperar a que todos los bloques terminen
+                latch.await();
             } catch (Exception e) {
                 e.printStackTrace();
             }
