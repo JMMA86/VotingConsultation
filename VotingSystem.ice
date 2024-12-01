@@ -1,7 +1,10 @@
-module VotingSystem
-{
+module VotingSystem {
+    sequence <string> VoterIds;
+
     interface Callback {
         void reportResponse(string response);
+        void processBlock(VoterIds voterIds);
+        void notifyStatus(string message);
     }
 
     interface VotingService {

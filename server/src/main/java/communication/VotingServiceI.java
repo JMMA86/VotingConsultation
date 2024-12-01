@@ -1,30 +1,23 @@
 package communication;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.List;
-import java.util.ArrayList;
-
-import com.zeroc.Ice.Current;
 import VotingSystem.CallbackPrx;
-
 import businessLogic.ClientManager;
 import businessLogic.VotingManager;
+import com.zeroc.Ice.Current;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class VotingServiceI implements VotingSystem.VotingService {
-    // Client Manager
     private ClientManager clientManager = new ClientManager();
-
-    // Voting Manager
     private VotingManager votingManager = new VotingManager();
-
-    // ThreadPool to handle requests
-    ExecutorService executor = Executors.newFixedThreadPool(4);
-
     private List<CallbackPrx> observers = new ArrayList<>();
+    private ExecutorService executor = Executors.newCachedThreadPool();
 
     public VotingServiceI() {
-        Thread thread = new Thread(() -> {
+        Thread connectionChecker = new Thread(() -> {
             while (true) {
                 try {
                     Thread.sleep(5000);
@@ -34,7 +27,7 @@ public class VotingServiceI implements VotingSystem.VotingService {
                 }
             }
         });
-        thread.start();
+        connectionChecker.start();
     }
 
     @Override
@@ -51,7 +44,7 @@ public class VotingServiceI implements VotingSystem.VotingService {
 
     @Override
     public boolean registerVoter(String voterId, CallbackPrx callback, Current current) {
-        return clientManager.registerVoter(voterId, callback);
+        return false;
     }
 
     @Override
@@ -78,27 +71,16 @@ public class VotingServiceI implements VotingSystem.VotingService {
     @Override
     public void uploadVoterFile(String filePath, CallbackPrx callback, Current current) {
         executor.submit(() -> {
-            reportResponse("Processing...", callback);
-            List<String> lines = votingManager.uploadVoterFile(filePath);  // Leer el archivo
-
-            int observerCount = observers.size();
-            if (observerCount == 0) {
-                reportResponse("No observers available to process the file.", callback);
-                return;
+            try {
+                callback.reportResponse("Uploading file...");
+                votingManager.uploadVoterFile(filePath, observers, executor);
+                callback.reportResponse("File uploaded successfully.");
+                callback.reportResponse("Metrics saved in server_log.csv");
+            } catch (Exception e) {
+                callback.reportResponse("Error uploading file: " + e.getMessage());
             }
-
-            // Distribuir las líneas entre los observadores
-            for (int i = 0; i < lines.size(); i++) {
-                CallbackPrx observer = observers.get(i % observerCount);  // Asignar a un observador
-                String task = lines.get(i);
-                executor.submit(() -> reportResponse("Processing task: " + task, observer));  // Asignar la tarea
-            }
-
-            reportResponse("File processing completed.", callback);
         });
     }
-
-
 
     public void reportResponse(String message, CallbackPrx callback) {
         try {
