@@ -12,11 +12,15 @@ public class DatabaseAccess {
     private static final Dotenv dotenv = Dotenv.load();
 
     private static final String DB_URL = dotenv.get("DB_URL");
-    private static final String USER = dotenv.get("USER");
-    private static final String PASSWORD = dotenv.get("PASSWORD");
+    private static final String USER = dotenv.get("DB_USER");
+    private static final String PASSWORD = dotenv.get("DB_PASSWORD");
+
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(DB_URL, USER, PASSWORD);
+    }
 
     public String getVotingStation(String voterId) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD)) {
+        try (Connection conn = getConnection()) {
             // Consulta para obtener el puesto de votación del ciudadano
             String query = """
                 SELECT pv.nombre AS voting_station
@@ -37,7 +41,7 @@ public class DatabaseAccess {
     }
 
     public List<String> getVotingStations(String city) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD)) {
+        try (Connection conn = getConnection()) {
             // Consulta para obtener todos los puestos de votación en un municipio
             String query = """
                 SELECT DISTINCT pv.nombre AS voting_station

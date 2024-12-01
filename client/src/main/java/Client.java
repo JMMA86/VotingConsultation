@@ -20,9 +20,15 @@ public class Client {
         System.setOut(originalOut);
         try (com.zeroc.Ice.Communicator communicator = com.zeroc.Ice.Util.initialize(args, "config.client")) {
             
-            QueryPrx queryPrx = QueryPrx.checkedCast(communicator.stringToProxy("DemoIceGrid/Query"));
-            VotingSystem.VotingServicePrx votingServicePrx = VotingSystem.VotingServicePrx
-                 .checkedCast(queryPrx.findObjectByType("::VotingSystem::VotingService"));
+            VotingSystem.VotingServicePrx votingServicePrx = null;
+            QueryPrx queryPrx = null;
+            votingServicePrx = VotingSystem.VotingServicePrx
+                .checkedCast(communicator.propertyToProxy("VotingService.Proxy"));     
+            if(votingServicePrx == null) {
+                queryPrx = QueryPrx.checkedCast(communicator.stringToProxy("DemoIceGrid/Query"));
+                votingServicePrx = VotingSystem.VotingServicePrx
+                         .checkedCast(queryPrx.findObjectByType("::VotingSystem::VotingService"));                
+            }
 
             if (votingServicePrx == null) {
                 throw new RuntimeException("Invalid proxy configuration.");
@@ -66,9 +72,11 @@ public class Client {
                 """);
                 
                 while (true) {
-                    votingServicePrx = VotingSystem.VotingServicePrx
-                        .checkedCast(queryPrx.findObjectByType("::VotingSystem::VotingService"));
-                    System.out.println("Identity: " + votingServicePrx.ice_getIdentity());
+                    if(queryPrx != null) {
+                        votingServicePrx = VotingSystem.VotingServicePrx
+                            .checkedCast(queryPrx.findObjectByType("::VotingSystem::VotingService"));
+                    }
+                    System.out.println("Identity: " + votingServicePrx.ice_getIdentity().name);
                     if (handleCitizenCommands(votingServicePrx, callbackPrx, voterId)) break;
                 }
             }

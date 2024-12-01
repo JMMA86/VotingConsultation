@@ -1,0 +1,26 @@
+<icegrid>
+  <application name="VotingSystem">
+    <server-template id="VotingServiceTemplate">
+        <parameter name="index"/>
+        <parameter name="host"/>
+        <server id="VotingService-${index}" exe="java" activation="on-demand">
+            <option>-jar</option>
+            <option>server.jar</option>
+            <adapter name="VotingService" endpoints="tcp -h ${host}">
+                <object identity="VotingService-${index}" type="::VotingSystem::VotingService" property="Identity"/>
+            </adapter>
+            <property name="Ice.LogFile" value="logs/VotingService-${index}.log"/>
+        </server>
+    </server-template>
+    <node name="node1">
+        <server-instance template="VotingServiceTemplate" index="1" host="xhgrid4"/>
+        <server-instance template="VotingServiceTemplate" index="2" host="xhgrid4"/>
+        <server-instance template="VotingServiceTemplate" index="3" host="xhgrid4"/>
+    </node>
+        <node name="node2">
+        <server-instance template="VotingServiceTemplate" index="4" host="xhgrid7"/>
+        <server-instance template="VotingServiceTemplate" index="5" host="xhgrid7"/>
+        <server-instance template="VotingServiceTemplate" index="6" host="xhgrid7"/>
+    </node>
+  </application>
+</icegrid>
