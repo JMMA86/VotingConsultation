@@ -1,12 +1,20 @@
 #
-# Configuración para acceder al objeto en el servidor.
-# Obtiene automáticamente un servidor disponible con el Locator.
+# Configuración en localhost.
 #
-# VotingService.Proxy=VotingService:tcp -h localhost -p 10000
-Ice.Default.Locator=DemoIceGrid/Locator:default -h localhost -p 7777
-
-# Configuración para el callback en localhost.
 Callback.Endpoints=tcp -h localhost
+VotingService.Proxy=VotingService:tcp -h localhost -p 10000
+
+#
+# Configuración para IceGrid xhgrid
+#
+# Ice.Default.Locator=DemoIceGrid/Locator:default -h xhgrid3 -p 7777
+# Callback.Endpoints=tcp -h xhgrid6
+
+#
+# Configuración para IceGrid local
+#
+# Callback.Endpoints=tcp -h localhost
+# Ice.Default.Locator=DemoIceGrid/Locator:default -h localhost -p 7777
 
 # Ice.Trace.Network=3
 # Ice.Trace.Protocol=1
