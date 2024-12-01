@@ -1,17 +1,20 @@
 package businessLogic;
 
+import VotingSystem.CallbackPrx;
+import persistence.DatabaseAccess;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-
-import persistence.DatabaseAccess;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 
 public class VotingManager {
-    private PrimeManager primeManager = new PrimeManager();
-    private DatabaseAccess databaseAccess = new DatabaseAccess();
+    private final PrimeManager primeManager = new PrimeManager();
+    private final DatabaseAccess databaseAccess = new DatabaseAccess();
 
     public String getVotingStation(String voterId) {
         try {
@@ -41,38 +44,47 @@ public class VotingManager {
         }
     }
 
-    public String uploadVoterFile(String filePath) {
-        int totalQueries = 0;
-        long totalStartTime = System.currentTimeMillis();
+    public void uploadVoterFile(String filePath, List<CallbackPrx> observers, ExecutorService executor) {
+        executor.submit(() -> {
+            List<String> voterIds = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
+                 BufferedWriter writer = new BufferedWriter(new FileWriter("server_log.csv", true))) {
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
-            BufferedWriter writer = new BufferedWriter(new FileWriter("server_log.csv", true))) {
-            
-            String line;
-            writer.write("voterId,votingStation,isPrime,time\n");
-            while ((line = reader.readLine()) != null) {
-                totalQueries++;
-                long startTime = System.currentTimeMillis();
-                String voterId = line.trim();
-                String votingStation = databaseAccess.getVotingStation(voterId);
-                
-                int primeFactorCount = primeManager.countPrimeFactors(Integer.parseInt(voterId));
-                boolean isPrime = primeManager.isPrime(primeFactorCount);
-                
-                long endTime = System.currentTimeMillis();
-                
-                writer.write(String.format(
-                    "%s,%s,%d,%d\n",
-                    voterId, votingStation, isPrime ? 1 : 0, endTime - startTime
-                ));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    voterIds.add(line.trim());
+                }
+
+                int blockSize = voterIds.size() / observers.size();
+                int remainder = voterIds.size() % observers.size();
+
+                CountDownLatch latch = new CountDownLatch(observers.size());
+                int startIndex = 0;
+                System.out.println("observers " + observers.size());
+                for (CallbackPrx callbackPrx : observers) {
+                    int endIndex = startIndex + blockSize + (remainder > 0 ? 1 : 0);
+                    remainder--;
+
+                    List<String> block = voterIds.subList(startIndex, endIndex);
+
+                    executor.submit(() -> {
+                        try {
+                            callbackPrx.processBlock(block.toArray(new String[0]));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        } finally {
+                            latch.countDown();
+                        }
+                    });
+
+                    startIndex = endIndex;
+                }
+
+                latch.await(); // Wait for all tasks to complete
+                writer.write("Total queries," + voterIds.size() + "\n");
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            
-            long totalEndTime = System.currentTimeMillis();
-            return "Total queries: " + totalQueries + "\nTime elapsed: " + (totalEndTime - totalStartTime) + " ms.\n";
-        } catch (IOException e) {
-            return "Error reading file: " + e.getMessage() + "\n";
-        } catch (Exception e) {
-            return "Error processing voter IDs: " + e.getMessage() + "\n";
-        }
+        });
     }
 }

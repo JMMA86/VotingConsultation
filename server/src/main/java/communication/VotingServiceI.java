@@ -1,27 +1,23 @@
 package communication;
 
+import VotingSystem.CallbackPrx;
+import businessLogic.ClientManager;
+import businessLogic.VotingManager;
+import com.zeroc.Ice.Current;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.zeroc.Ice.Current;
-
-import VotingSystem.CallbackPrx;
-
-import businessLogic.ClientManager;
-import businessLogic.VotingManager;
-
 public class VotingServiceI implements VotingSystem.VotingService {
-    // Client Manager
-    private ClientManager clientManager = new ClientManager();
-
-    // Voting Manager
-    private VotingManager votingManager = new VotingManager();
-
-    // ThreadPool to handle requests
-    ExecutorService executor = Executors.newFixedThreadPool(5);
+    private final ClientManager clientManager = new ClientManager();
+    private final VotingManager votingManager = new VotingManager();
+    private final List<CallbackPrx> observers = new ArrayList<>();
+    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public VotingServiceI() {
-        Thread thread = new Thread(() -> {
+        Thread connectionChecker = new Thread(() -> {
             while (true) {
                 try {
                     Thread.sleep(5000);
@@ -31,16 +27,18 @@ public class VotingServiceI implements VotingSystem.VotingService {
                 }
             }
         });
-        thread.start();
+        connectionChecker.start();
     }
 
     @Override
     public void registerObserver(CallbackPrx observer, Current current) {
+        observers.add(observer);
         clientManager.registerObserver(observer);
     }
 
     @Override
     public void unregisterObserver(CallbackPrx observer, Current current) {
+        observers.remove(observer);
         clientManager.unregisterObserver(observer);
     }
 
@@ -61,6 +59,13 @@ public class VotingServiceI implements VotingSystem.VotingService {
             reportResponse(answer, callback);
         });
     }
+    
+    @Override
+    public String getVotingStationSync(String voterId, Current current) {
+        String answer = votingManager.getVotingStation(voterId);
+        return answer;
+    }
+
 
     @Override
     public void listVotingStations(String city, CallbackPrx callback, Current current) {
@@ -73,9 +78,14 @@ public class VotingServiceI implements VotingSystem.VotingService {
     @Override
     public void uploadVoterFile(String filePath, CallbackPrx callback, Current current) {
         executor.submit(() -> {
-            reportResponse("Proccesing...", callback);
-            String answer = votingManager.uploadVoterFile(filePath);
-            reportResponse(answer, callback);
+            try {
+                callback.reportResponse("Uploading file...");
+                votingManager.uploadVoterFile(filePath, observers, executor);
+                callback.reportResponse("File uploaded successfully.");
+                callback.reportResponse("Metrics saved in server_log.csv");
+            } catch (Exception e) {
+                callback.reportResponse("Error uploading file: " + e.getMessage());
+            }
         });
     }
 

@@ -1,22 +1,23 @@
 package businessLogic;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Semaphore;
 
 import VotingSystem.CallbackPrx;
 
 public class ClientManager {
     // Map to store voters and their respective callback proxies
-    Map<String, CallbackPrx> voters = new HashMap<>();
+    Map<String, CallbackPrx> voters = new ConcurrentHashMap<>();
 
     // Semaphore to control access
     Semaphore semaphore = new Semaphore(1);
 
     // Observers list
-    private List<CallbackPrx> observers = new ArrayList<>();
+    private final List<CallbackPrx> observers = new CopyOnWriteArrayList<>();
 
     // Register observer
     public void registerObserver(CallbackPrx observer) {

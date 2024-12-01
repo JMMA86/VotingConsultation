@@ -1,7 +1,8 @@
 package persistence;
 import io.github.cdimascio.dotenv.Dotenv;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -12,11 +13,24 @@ public class DatabaseAccess {
     private static final Dotenv dotenv = Dotenv.load();
 
     private static final String DB_URL = dotenv.get("DB_URL");
-    private static final String USER = dotenv.get("USER");
-    private static final String PASSWORD = dotenv.get("PASSWORD");
+    private static final String USER = dotenv.get("DB_USER");
+    private static final String PASSWORD = dotenv.get("DB_PASSWORD");
+
+    private static final HikariConfig config = new HikariConfig();
+    private static final HikariDataSource ds;
+
+    static {
+        config.setJdbcUrl(DB_URL);
+        config.setUsername(USER);
+        config.setPassword(PASSWORD);
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        ds = new HikariDataSource(config);
+    }
 
     public String getVotingStation(String voterId) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD)) {
+        try (Connection conn = ds.getConnection()) {
             // Consulta para obtener el puesto de votación del ciudadano
             String query = """
                 SELECT pv.nombre AS voting_station
@@ -37,7 +51,7 @@ public class DatabaseAccess {
     }
 
     public List<String> getVotingStations(String city) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD)) {
+        try (Connection conn = ds.getConnection()) {
             // Consulta para obtener todos los puestos de votación en un municipio
             String query = """
                 SELECT DISTINCT pv.nombre AS voting_station

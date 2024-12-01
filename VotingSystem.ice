@@ -1,7 +1,10 @@
-module VotingSystem
-{
+module VotingSystem {
+    sequence <string> VoterIds;
+
     interface Callback {
         void reportResponse(string response);
+        void processBlock(VoterIds voterIds);
+        void notifyStatus(string message);
     }
 
     interface VotingService {
@@ -12,5 +15,6 @@ module VotingSystem
         void listVotingStations(string city, Callback* callback);
         void getVotingStation(string voterId, Callback* callback);
         void uploadVoterFile(string filePath, Callback* callback);
+        string getVotingStationSync(string voterId);
     }
 }
