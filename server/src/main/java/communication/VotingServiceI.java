@@ -11,10 +11,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class VotingServiceI implements VotingSystem.VotingService {
-    private ClientManager clientManager = new ClientManager();
-    private VotingManager votingManager = new VotingManager();
-    private List<CallbackPrx> observers = new ArrayList<>();
-    private ExecutorService executor = Executors.newCachedThreadPool();
+    private final ClientManager clientManager = new ClientManager();
+    private final VotingManager votingManager = new VotingManager();
+    private final List<CallbackPrx> observers = new ArrayList<>();
+    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public VotingServiceI() {
         Thread connectionChecker = new Thread(() -> {

@@ -3,14 +3,18 @@ package businessLogic;
 import VotingSystem.CallbackPrx;
 import persistence.DatabaseAccess;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 
 public class VotingManager {
-    private PrimeManager primeManager = new PrimeManager();
-    private DatabaseAccess databaseAccess = new DatabaseAccess();
+    private final PrimeManager primeManager = new PrimeManager();
+    private final DatabaseAccess databaseAccess = new DatabaseAccess();
 
     public String getVotingStation(String voterId) {
         try {
@@ -54,27 +58,30 @@ public class VotingManager {
                 int blockSize = voterIds.size() / observers.size();
                 int remainder = voterIds.size() % observers.size();
 
+                CountDownLatch latch = new CountDownLatch(observers.size());
                 int startIndex = 0;
                 for (CallbackPrx callbackPrx : observers) {
                     int endIndex = startIndex + blockSize + (remainder > 0 ? 1 : 0);
                     remainder--;
 
                     List<String> block = voterIds.subList(startIndex, endIndex);
-                    CallbackPrx observer = callbackPrx;
 
                     executor.submit(() -> {
                         try {
-                            observer.processBlock(block.toArray(new String[0])); // Notificar al cliente
+                            callbackPrx.processBlock(block.toArray(new String[0]));
                         } catch (Exception e) {
                             e.printStackTrace();
+                        } finally {
+                            latch.countDown();
                         }
                     });
 
                     startIndex = endIndex;
                 }
 
+                latch.await(); // Wait for all tasks to complete
                 writer.write("Total queries," + voterIds.size() + "\n");
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         });

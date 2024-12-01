@@ -3,14 +3,12 @@ import com.zeroc.Ice.ObjectPrx;
 import com.zeroc.Ice.Util;
 import communication.CallbackI;
 
-import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Scanner;
 
 public class Client {
     public static Scanner sc = new Scanner(System.in);
     public static boolean isInterfaceReady = false;
-    public static ByteArrayOutputStream bufferStream = new ByteArrayOutputStream();
     public static PrintStream originalOut = System.out;
 
     public static void main(String[] args) {
@@ -38,8 +36,6 @@ public class Client {
                 votingServicePrx.registerObserver(callbackPrx);
                 System.out.println("(System) Registered as an observer. You can use the following commands:");
                 System.out.println("""
-                        '/get station' - Find your voting station
-                        '/list stations CITY' - List voting stations in a city
                         '/upload FILE_PATH' - Upload a file of voter IDs for processing
                         '/exit' - Exit the program"
                         """);
@@ -47,9 +43,6 @@ public class Client {
                 while (true) {
                     if (handleCitizenCommands(votingServicePrx, callbackPrx, null)) break;
                 }
-
-                votingServicePrx.unregisterObserver(callbackPrx);
-                System.out.println("(System) Observer interrupted. Exiting...");
             } else {
                 System.out.print("(System) Enter your voter ID: ");
                 String voterId = sc.nextLine();
@@ -88,7 +81,7 @@ public class Client {
                     Select an option:
                     Register as an observer client (1)
                     Register as a citizen (2)
-                    Option: """);
+                    Option:\s""");
             answer = sc.nextLine();
             if (answer.equals("1") || answer.equals("2")) {
                 valid = true;
@@ -105,6 +98,9 @@ public class Client {
         if (input.equals("/exit")) {
             if (voterId != null) {
                 votingServicePrx.unRegisterVoter(voterId);
+            } else {
+                votingServicePrx.unregisterObserver(callbackPrx);
+                System.out.println("(System) Observer interrupted. Exiting...");
             }
             System.out.println("(System) Exiting... Goodbye!");
             return true; // Stop iteration
