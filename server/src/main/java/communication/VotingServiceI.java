@@ -80,9 +80,10 @@ public class VotingServiceI implements VotingSystem.VotingService {
         executor.submit(() -> {
             try {
                 callback.reportResponse("Uploading file...");
-                votingManager.uploadVoterFile(filePath, observers, executor);
+                votingManager.uploadVoterFile(filePath, observers, executor, callback);
                 callback.reportResponse("File uploaded successfully.");
-                callback.reportResponse("Metrics saved in server_log.csv");
+                callback.reportResponse("Metrics will be saved in server_log.csv");
+                callback.reportResponse("Processing...");
             } catch (Exception e) {
                 callback.reportResponse("Error uploading file: " + e.getMessage());
             }

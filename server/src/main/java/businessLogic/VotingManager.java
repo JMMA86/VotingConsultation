@@ -13,9 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class VotingManager {
     private final PrimeManager primeManager = new PrimeManager();
@@ -27,9 +25,9 @@ public class VotingManager {
             int primeFactorsCount = primeManager.countPrimeFactors(Integer.parseInt(voterId));
             boolean isPrime = primeManager.isPrime(primeFactorsCount);
             if (isPrime) {
-                return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is prime.\n";
+                return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is prime.";
             } else {
-                return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is not prime.\n";
+                return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is not prime.";
             }
         } catch (Exception e) {
             return "Error retrieving voting station: " + e.getMessage() + "\n";
@@ -49,37 +47,33 @@ public class VotingManager {
         }
     }
 
-    public void uploadVoterFile(String filePath, List<CallbackPrx> observers, ExecutorService executor) {
-        // Tamaño del bloque para procesamiento
-        final int BLOCK_SIZE = 100; // Ajusta según el rendimiento esperado y memoria disponible
-
+    public void uploadVoterFile(String filePath, List<CallbackPrx> observers, ExecutorService executor, CallbackPrx callback) {
+        final int BLOCK_SIZE = 1000; // Tamaño del bloque
         executor.submit(() -> {
             try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
-                BufferedWriter logWriter = new BufferedWriter(new FileWriter("server_log.csv", true))) {
-
+                 BufferedWriter logWriter = new BufferedWriter(new FileWriter("server_log.csv", true))) {
+    
                 List<String> block = new ArrayList<>();
                 Queue<CallbackPrx> availableObservers = new LinkedList<>(observers);
-                AtomicInteger processingBlocks = new AtomicInteger(0);
-                CountDownLatch latch = new CountDownLatch(observers.size());
-
-                logWriter.write("blockNumber,observer,timeTaken\n");
-                String voterId;
+                List<CompletableFuture<Void>> futures = new ArrayList<>();
                 int blockCounter = 0;
-
+    
+                logWriter.write("blockNumber,observer,timeTaken\n");
+    
+                String voterId;
+                long startTimeTotal = System.currentTimeMillis();
                 while ((voterId = reader.readLine()) != null) {
                     block.add(voterId.trim());
-
-                    // Si el bloque está completo, procesarlo
+    
                     if (block.size() == BLOCK_SIZE) {
                         while (availableObservers.isEmpty()) {
-                            // Esperar a que un observer esté disponible
-                            Thread.sleep(50);
+                            Thread.sleep(10); // Espera activa hasta que haya un observer disponible
                         }
-
+    
                         CallbackPrx observer = availableObservers.poll();
                         String[] voterBlock = block.toArray(new String[0]);
                         int currentBlockNumber = blockCounter++;
-
+    
                         long startTime = System.currentTimeMillis();
                         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                             try {
@@ -87,12 +81,10 @@ public class VotingManager {
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
-                        }, executor);
-
-                        future.thenAccept(v -> {
+                        }, executor).thenAccept(v -> {
                             long endTime = System.currentTimeMillis();
                             long timeTaken = endTime - startTime;
-
+    
                             synchronized (logWriter) {
                                 try {
                                     logWriter.write(String.format("%d,%s,%d\n", currentBlockNumber,
@@ -101,27 +93,25 @@ public class VotingManager {
                                     e.printStackTrace();
                                 }
                             }
-
+    
                             availableObservers.add(observer); // Liberar el observer
-                            processingBlocks.decrementAndGet();
-                            latch.countDown();
                         });
-
-                        block.clear(); // Limpiar el bloque para el siguiente grupo de cédulas
-                        processingBlocks.incrementAndGet();
+    
+                        futures.add(future);
+                        block.clear(); // Limpiar el bloque para el siguiente grupo
                     }
                 }
-
-                // Asegurarse de procesar el bloque restante si no está vacío
+    
+                // Procesar bloque restante, si existe
                 if (!block.isEmpty()) {
                     while (availableObservers.isEmpty()) {
                         Thread.sleep(500);
                     }
-
+    
                     CallbackPrx observer = availableObservers.poll();
                     String[] voterBlock = block.toArray(new String[0]);
                     int currentBlockNumber = blockCounter++;
-
+    
                     long startTime = System.currentTimeMillis();
                     CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                         try {
@@ -129,12 +119,10 @@ public class VotingManager {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-                    }, executor);
-
-                    future.thenAccept(v -> {
+                    }, executor).thenAccept(v -> {
                         long endTime = System.currentTimeMillis();
                         long timeTaken = endTime - startTime;
-
+    
                         synchronized (logWriter) {
                             try {
                                 logWriter.write(String.format("%d,%s,%d\n", currentBlockNumber,
@@ -143,21 +131,22 @@ public class VotingManager {
                                 e.printStackTrace();
                             }
                         }
-
+    
                         availableObservers.add(observer);
-                        processingBlocks.decrementAndGet();
-                        latch.countDown();
                     });
-
-                    block.clear();
-                    processingBlocks.incrementAndGet();
+    
+                    futures.add(future);
                 }
-
-                // Esperar a que todos los bloques terminen
-                latch.await();
+    
+                // Esperar a que todas las tareas terminen
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+                long endTimeTotal = System.currentTimeMillis();
+                long time = endTimeTotal - startTimeTotal;
+                logWriter.write("Time taken: " + time);
+                callback.reportResponse("Time taken: " + time);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
-    }
+    }    
 }

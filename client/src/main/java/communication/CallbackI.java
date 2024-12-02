@@ -24,11 +24,10 @@ public class CallbackI implements VotingSystem.Callback {
     public void processBlock(String[] voterIds, com.zeroc.Ice.Current current) {
         CountDownLatch latch = new CountDownLatch(voterIds.length);
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("client_log.csv", true))) {
-            writer.write("voterId,response,time\n");
             for (String voterId : voterIds) {
                 executorService.submit(() -> {
                     long startTime = System.currentTimeMillis();
-                    System.out.println("Requesting voting station for voter " + voterId);
+                    // System.out.println("Requesting voting station for voter " + voterId);
                     String serverAnswer = votingService.getVotingStationSync(voterId);
 
                     long endTime = System.currentTimeMillis();
