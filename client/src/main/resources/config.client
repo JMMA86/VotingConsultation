@@ -8,7 +8,7 @@ VotingService.Proxy=VotingService:tcp -h localhost -p 10000
 # Configuración para IceGrid xhgrid
 #
 # Ice.Default.Locator=DemoIceGrid/Locator:default -h xhgrid3 -p 7777
-# Callback.Endpoints=tcp -h xhgrid6
+# Callback.Endpoints=tcp -h xhgrid13
 
 #
 # Configuración para IceGrid local

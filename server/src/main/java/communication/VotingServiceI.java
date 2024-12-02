@@ -11,9 +11,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class VotingServiceI implements VotingSystem.VotingService {
+    private static List<CallbackPrx> globalObservers = new ArrayList<>();
     private final ClientManager clientManager = new ClientManager();
     private final VotingManager votingManager = new VotingManager();
-    private final List<CallbackPrx> observers = new ArrayList<>();
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public VotingServiceI() {
@@ -32,13 +32,17 @@ public class VotingServiceI implements VotingSystem.VotingService {
 
     @Override
     public void registerObserver(CallbackPrx observer, Current current) {
-        observers.add(observer);
+        synchronized (globalObservers) {
+            globalObservers.add(observer);
+        }
         clientManager.registerObserver(observer);
     }
 
     @Override
     public void unregisterObserver(CallbackPrx observer, Current current) {
-        observers.remove(observer);
+        synchronized (globalObservers) {
+            globalObservers.remove(observer);
+        }
         clientManager.unregisterObserver(observer);
     }
 
@@ -63,6 +67,7 @@ public class VotingServiceI implements VotingSystem.VotingService {
     @Override
     public String getVotingStationSync(String voterId, Current current) {
         String answer = votingManager.getVotingStation(voterId);
+        
         return answer;
     }
 
@@ -80,7 +85,7 @@ public class VotingServiceI implements VotingSystem.VotingService {
         executor.submit(() -> {
             try {
                 callback.reportResponse("Uploading file...");
-                votingManager.uploadVoterFile(filePath, observers, executor, callback);
+                votingManager.uploadVoterFile(filePath, globalObservers, executor, callback);
                 callback.reportResponse("File uploaded successfully.");
                 callback.reportResponse("Metrics will be saved in server_log.csv");
                 callback.reportResponse("Processing...");

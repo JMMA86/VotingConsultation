@@ -17,7 +17,7 @@
         <server-instance template="VotingServiceTemplate" index="2" host="xhgrid4"/>
         <server-instance template="VotingServiceTemplate" index="3" host="xhgrid4"/>
     </node>
-        <node name="node2">
+    <node name="node2">
         <server-instance template="VotingServiceTemplate" index="4" host="xhgrid7"/>
         <server-instance template="VotingServiceTemplate" index="5" host="xhgrid7"/>
         <server-instance template="VotingServiceTemplate" index="6" host="xhgrid7"/>

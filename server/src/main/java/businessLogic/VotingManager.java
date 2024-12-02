@@ -25,9 +25,11 @@ public class VotingManager {
             int primeFactorsCount = primeManager.countPrimeFactors(Integer.parseInt(voterId));
             boolean isPrime = primeManager.isPrime(primeFactorsCount);
             if (isPrime) {
-                return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is prime.";
+                return votingStation + ",1";
+                // return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is prime.";
             } else {
-                return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is not prime.";
+                return votingStation + ",0";
+                // return "Voter " + voterId + " votes at: " + votingStation + " and its number of prime factors is not prime.";
             }
         } catch (Exception e) {
             return "Error retrieving voting station: " + e.getMessage() + "\n";
@@ -57,20 +59,42 @@ public class VotingManager {
                 Queue<CallbackPrx> availableObservers = new LinkedList<>(observers);
                 List<CompletableFuture<Void>> futures = new ArrayList<>();
                 int blockCounter = 0;
+                if(observers.isEmpty()) {
+                    availableObservers.add(callback);
+                    callback.reportResponse("No observers available, you will process the entire list.");
+                }
     
                 logWriter.write("blockNumber,observer,timeTaken\n");
+                int numBlocks = 0;
     
                 String voterId;
                 long startTimeTotal = System.currentTimeMillis();
                 while ((voterId = reader.readLine()) != null) {
                     block.add(voterId.trim());
-    
+                    
+                    CallbackPrx tmpObserver = null;
                     if (block.size() == BLOCK_SIZE) {
-                        while (availableObservers.isEmpty()) {
-                            Thread.sleep(10); // Espera activa hasta que haya un observer disponible
+                        numBlocks++;
+
+                        boolean valid = false;
+                        while(!valid) {
+                            while (availableObservers.isEmpty()) {
+                                Thread.sleep(10); // Espera activa hasta que haya un observer disponible
+                            }
+                            while(tmpObserver == null && !availableObservers.isEmpty()) {
+                                tmpObserver = availableObservers.poll();
+                                if(tmpObserver != null) {
+                                    try {
+                                        tmpObserver.ice_ping();
+                                    } catch (Exception e) {
+                                        tmpObserver = null;
+                                    }
+                                    valid = true;
+                                }
+                            }
                         }
+                        final CallbackPrx observer = tmpObserver;
     
-                        CallbackPrx observer = availableObservers.poll();
                         String[] voterBlock = block.toArray(new String[0]);
                         int currentBlockNumber = blockCounter++;
     
@@ -105,17 +129,24 @@ public class VotingManager {
                 // Procesar bloque restante, si existe
                 if (!block.isEmpty()) {
                     while (availableObservers.isEmpty()) {
-                        Thread.sleep(500);
+                        Thread.sleep(10);
                     }
     
-                    CallbackPrx observer = availableObservers.poll();
+                    CallbackPrx observer = null;
+                    if(numBlocks == 0) {
+                        observer = callback;
+                        callback.reportResponse("The list is smaller than the block size, you will process the entire list.");
+                    } else {
+                        observer = availableObservers.poll();
+                    }
                     String[] voterBlock = block.toArray(new String[0]);
                     int currentBlockNumber = blockCounter++;
     
                     long startTime = System.currentTimeMillis();
+                    final CallbackPrx finalObserver = observer;
                     CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                         try {
-                            observer.processBlock(voterBlock);
+                            finalObserver.processBlock(voterBlock);
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -126,13 +157,13 @@ public class VotingManager {
                         synchronized (logWriter) {
                             try {
                                 logWriter.write(String.format("%d,%s,%d\n", currentBlockNumber,
-                                        observer.ice_getIdentity().name, timeTaken));
+                                        finalObserver.ice_getIdentity(), timeTaken));
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
                         }
     
-                        availableObservers.add(observer);
+                        availableObservers.add(finalObserver);
                     });
     
                     futures.add(future);

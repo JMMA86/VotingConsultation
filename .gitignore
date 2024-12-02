@@ -15,3 +15,7 @@ out/
 
 **/logs
 **/db
+
+*.txt
+
+stats*/

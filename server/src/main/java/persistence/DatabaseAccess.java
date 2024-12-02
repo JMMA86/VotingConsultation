@@ -33,7 +33,7 @@ public class DatabaseAccess {
         try (Connection conn = ds.getConnection()) {
             // Consulta para obtener el puesto de votación del ciudadano
             String query = """
-                SELECT pv.nombre AS voting_station
+                SELECT pv.nombre AS voting_station, mv.id AS mesa_id
                 FROM ciudadano c
                 JOIN mesa_votacion mv ON c.mesa_id = mv.id
                 JOIN puesto_votacion pv ON mv.puesto_id = pv.id
@@ -43,9 +43,11 @@ public class DatabaseAccess {
             stmt.setString(1, voterId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return rs.getString("voting_station");
+                return "" + rs.getInt("mesa_id");
+                // return rs.getString("voting_station") + " (Mesa " + rs.getInt("mesa_id") + ")";
             } else {
-                throw new SQLException("Voter not found");
+                // throw new SQLException("Voter not found");
+                return "-1";
             }
         }
     }

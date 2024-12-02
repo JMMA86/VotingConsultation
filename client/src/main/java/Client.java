@@ -1,17 +1,18 @@
+import java.io.PrintStream;
+import java.util.Scanner;
+
 import com.zeroc.Ice.ObjectAdapter;
 import com.zeroc.Ice.ObjectPrx;
 import com.zeroc.Ice.Util;
-import com.zeroc.IceGrid.*;
+import com.zeroc.IceGrid.QueryPrx;
 
 import communication.CallbackI;
-
-import java.io.PrintStream;
-import java.util.Scanner;
 
 public class Client {
     public static Scanner sc = new Scanner(System.in);
     public static boolean isInterfaceReady = false;
     public static PrintStream originalOut = System.out;
+    public static int numRequests = 1;
 
     public static void main(String[] args) {
         System.setOut(originalOut);
@@ -41,9 +42,16 @@ public class Client {
 
             // Prompt user for role
             boolean isObserver = promptUserRole();
-
+            
             if (isObserver) {
-                votingServicePrx.registerObserver(callbackPrx);
+                for(int i=1; i<=50; i++) {
+                    try {
+                        ObjectPrx proxy = communicator.stringToProxy("VotingService-" + i);
+                        votingServicePrx = VotingSystem.VotingServicePrx.checkedCast(proxy);
+                        votingServicePrx.registerObserver(callbackPrx);
+                    } catch (Exception e) {
+                    }
+                }
                 System.out.println("(System) Registered as an observer. You can use the following commands:");
                 System.out.println("""
                         '/upload FILE_PATH' - Upload a file of voter IDs for processing
@@ -61,6 +69,9 @@ public class Client {
                     System.out.println("(System) Voter ID already taken. Enter a different ID.");
                     voterId = sc.nextLine();
                 }
+
+                System.out.println("(System) Enter the number of repetitions for the requests: ");
+                numRequests = Integer.parseInt(sc.nextLine());
 
                 System.out.println("""
                         (System) Welcome! You can use the following commands:
@@ -121,7 +132,9 @@ public class Client {
             return true; // Stop iteration
         } else if (input.startsWith("/get station")) {
             if (voterId != null) {
-                votingServicePrx.getVotingStation(voterId, callbackPrx);
+                for(int i=0; i<numRequests; i++) {
+                    votingServicePrx.getVotingStation(voterId, callbackPrx);
+                }
             } else {
                 System.out.println("(System) Error: Observers cannot get a voting station.");
             }
